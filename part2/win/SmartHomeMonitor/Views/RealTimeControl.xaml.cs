@@ -41,6 +41,8 @@ namespace SmartHomeMonitoringApp.Views
             InitializeComponent();
 
             DispatcherTimer timer = new DispatcherTimer();
+            //DispatcherTimer: 주기적으로 이벤트를 발생시키는 타이머입니다.
+            //여기서는 1초 간격(new TimeSpan(0,0,1))으로 설정되었습니다.
             timer.Interval = new TimeSpan(0,0,1); // 1초마다
             timer.Tick += Timer_Tick;
             timer.Start();
@@ -53,24 +55,39 @@ namespace SmartHomeMonitoringApp.Views
 
         private async void UserControl_Loaded(object sender, RoutedEventArgs e)
         {
-
+            // 만약 Commons.MQTT_CLIENT가 이미 존재하고 연결되어 있다면
             if (Commons.MQTT_CLIENT != null && Commons.MQTT_CLIENT.IsConnected)
-            {// 이미 다른화면에서 MQTT를 연결했다면
+            {
+                // 다른 화면에서 이미 MQTT를 연결했다면
+                // 메시지를 받을 이벤트 핸들러를 추가
                 Commons.MQTT_CLIENT.ApplicationMessageReceivedAsync += MQTT_CLIENT_ApplicationMessageReceivedAsync;
             }
             else
-            {// 
+            {
+                // MQTT 클라이언트가 존재하지 않거나 연결되지 않았다면
                 var mqttFactory = new MqttFactory();
                 Commons.MQTT_CLIENT = mqttFactory.CreateMqttClient();
-                var mqttClientOptions = new MqttClientOptionsBuilder().WithTcpServer(Commons.BROKERHOST).Build();
+
+                // MQTT 클라이언트 옵션을 설정 (TCP 서버 호스트명 사용)
+                var mqttClientOptions = new MqttClientOptionsBuilder()
+                                            .WithTcpServer(Commons.BROKERHOST)
+                                            .Build();
+
+                // MQTT 클라이언트를 연결
                 await Commons.MQTT_CLIENT.ConnectAsync(mqttClientOptions, CancellationToken.None);
+
+                // 메시지를 받을 이벤트 핸들러를 추가
                 Commons.MQTT_CLIENT.ApplicationMessageReceivedAsync += MQTT_CLIENT_ApplicationMessageReceivedAsync;
 
-                var mqttSubscribeOptions = mqttFactory.CreateSubscribeOptionsBuilder().WithTopicFilter(
-                    f =>
-                    {
-                        f.WithTopic(Commons.MQTTTOPIC);
-                    }).Build();
+                // MQTT 구독 옵션 설정 (주제 설정)
+                var mqttSubscribeOptions = mqttFactory.CreateSubscribeOptionsBuilder()
+                                                      .WithTopicFilter(f =>
+                                                      {
+                                                          f.WithTopic(Commons.MQTTTOPIC);
+                                                      })
+                                                      .Build();
+
+                // 주제에 구독 요청
                 await Commons.MQTT_CLIENT.SubscribeAsync(mqttSubscribeOptions, CancellationToken.None);
             }
         }
